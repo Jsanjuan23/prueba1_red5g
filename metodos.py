@@ -120,3 +120,5 @@ class principal(metodos_sql):
             res = self.insertar(sql)
             return res
         return "No se pudo agregar el comentario "
+    """COLE ESTA MONDA SI SIRVEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"""
+    
