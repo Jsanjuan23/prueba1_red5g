@@ -1,65 +1,66 @@
-from flask import Flask,redirect,url_for,render_template,request
-from metodos import principal
-from respuesta import msj
+from BD.metodos import principal
+from flask import Flask,request
 
 app=Flask(__name__)
-
-
 @app.route('/')
 def home():
- 
-    return "Hola mundo"
+    return 'Holaaaa'
 
 @app.route('/registrar', methods=['post'])
 def registrar():
-    
+    """ recibe todos los campos de tablas persona, excepto id_persona y token"""
     datos = request.json
     aut = principal()
     mensaje = aut.crear_usuario(datos)
-    return msj(mensaje=mensaje)
+    return mensaje
 
-
-@app.route('/login', methods=['post'])
+@app.route('/login', methods=['get', 'post'])
 def login():
-    
+    """ recibe correo y contraseña"""
     datos = request.json
     aut = principal()
     mensaje = aut.login_usuario(datos)
-    return msj(mensaje=mensaje)
-
-@app.route('/noticias/<int:op>', methods=['post','get'])
-def noticias(op):
+    return mensaje
     
-    if op == 1 :
-        datos = request.json
-        aut = principal()
-        mensaje = aut.bus_noticias(datos)
-        return mensaje
-    if op == 2 : 
-        datos = request.json
-        aut = principal()
-        mensaje = aut.crear_noticias(datos)
-        return mensaje
-    if op == 3 :
-        datos = request.json
-        aut = principal()
-        mensaje = aut.act_noticias(datos)
-        return mensaje
-    if op == 4 :
-        datos = request.json
-        aut = principal()
-        mensaje = aut.eli_noticias(datos)
-        return mensaje
-    return msj(True, mensaje="No ha ingresado una operación válida.")
-
-@app.route('/comentarios', methods=['post'])
-def comentario():
+@app.route('/noticias/<int:op>', methods=['get', 'post'])
+def noticias(op):
     
     datos = request.json
     aut = principal()
-    mensaje = aut.crear_comentario(datos)
-    return msj(True,mensaje=mensaje)
+    
+    """ CREATE """
+    if op == 1 :
+        "se recibe token, titulo y descripcion"
+        mensaje = aut.crear_noticia(datos)
+        return mensaje
+    
+    """ READ """
+    if op == 2 :
+        "se recibe token y id_persona"
+        mensaje = aut.bus_noticia(datos)
+        return mensaje
+    
+    """ UPDATE """
+    if op == 3 :
+        "se recibe token, id_noticia, titulo y descripcion"
+        mensaje = aut.actualizar_noticia(datos)
+        return mensaje
+    
+    """ DELETE """
+    if op == 4 :
+        "se recibe token, id_noticia"
+        mensaje = aut.eli_noticia(datos)
+        return mensaje
+    
+    return "Se ha recibido una operación no valida "
+
+@app.route('/comentarios', methods=['get', 'post'])
+def comentarios():
+    
+    datos = request.json
+    aut = principal()
+    mensaje = aut.crear_comentarios(datos)
+    return mensaje
     
 if __name__ == '__main__':
-   
     app.run(debug=True)

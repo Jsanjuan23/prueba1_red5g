@@ -1,122 +1,122 @@
-from BD.metodos_sql import metodos_sql
-from respuesta import msj
 import hashlib
 import jwt
 import time
+from respuesta import msj
+from BD.metodos_sql import metodos_sql
+
 class principal(metodos_sql):
     
-    def crear_usuario(self,datos):
-        passw_encrip = self.conv_passw(datos['clave'])
-        sql = f"INSERT INTO PERSONAS (nombre, direccion, telefono, fecha, correo, clave) VALUES ('{datos['nombre']}','{datos['direccion']}','{datos['telefono']}','{datos['fecha']}','{datos['correo']}','{passw_encrip}');"
-        resp = self.insertar(sql)
-        return resp
-    
-    def login_usuario(self, datos):
+    def crear_usuario(self, datos):
+       
+       passw_encrip = self.conv_pass(datos['clave'])
+       sql = f"INSERT INTO PERSONAS (nombre, direccion, telefono, fecha, correo, clave) VALUES ('{datos['nombre']}','{datos['direccion']}','{datos['telefono']}','{datos['fecha']}','{datos['correo']}','{passw_encrip}')"
+       res = self.insertar(sql)
+       return res
         
-        passw_encrip = self.conv_passw(datos['clave'])
-        sql = f"SELECT id_persona FROM PERSONAS WHERE correo='{datos['correo']}' AND clave='{passw_encrip}';"
-        res = self.consulta(sql)
-        if len(res['data']) > 0:
-        # se genera el nuevo token de sesion y se guarda
-            token = self.gen_token(passw_encrip)
-            resul = self.guardar_token(token, res['data'][0]['id_persona'])
-            return resul
-        return "Algunos de los datos son incorrectos"
-        
-    def conv_passw(self, passw):
-        """
-        Metodo para convertir la contraseña del usuario en una contraseña segura
-        param: passw => str
-        return: hash_passw => str
-        """
+    def conv_pass(self, passw):
         hash = hashlib.new('sha256')
         hash.update(passw.encode())
         hash_passw = hash.hexdigest()
         return hash_passw
-    
+        
+    def login_usuario(self, datos):
+        passw_encrip = self.conv_pass(datos['clave'])
+        sql = f"SELECT id_persona FROM PERSONAS WHERE correo='{datos['correo']}' AND clave='{passw_encrip}';"
+        res = self.consulta(sql)
+        
+        if len(res['data']) > 0:
+            token = self.gen_token(passw_encrip)
+            resul = self.guardar_token(token, res['data'][0]['id_persona'])
+            return resul
+        return msj(True,mensaje="Alguno de los datos son incorrectos")
+            
     def gen_token(self, passw):
-        """
-        Metodo para generar un nuevo token recibe como parametro 
-        param: passw => str
-        return: token => str
-        """
         fecha = time.strftime('%d%m%Y%H%M%S')
         token = f"{fecha}{passw}"
-        token = jwt.encode({"token":token}, "secret", algorithm="HS256")
-        return token
+        encode = jwt.encode({"token":token},"secret", algorithm="HS256")
+        return encode
     
-    def guardar_token(self, token, Id):
-        """
-        Metodo para guardar el token en la base de datos de la platforma
-        recibe el token y el id del usuario
-        param: token => str
-        param: Id => int
-        return: => dict
-        """
-
-        sql = f"UPDATE PERSONAS SET tokens= '{token}' WHERE id_persona={Id};"
-        res = self.actualiza(sql)
+    def guardar_token(self, token, id):
+        sql = f"UPDATE PERSONAS SET token='{token}' WHERE id_persona={id};"
+        res = self.actualizar(sql)
         if res['error']:
-            return msj(True, "Incoveniente al momento de guardar el tokens")
-        return token
-    
-    def bus_noticias(self, datos):
-        
-        sql = f"SELECT * FROM NOTICIAS WHERE id_usuario={datos['id_persona']};"
-        res = self.consulta(sql)
-        if len(res['data']) > 0:
-            return res
-        return msj(True,"Este usuario no tiene ninguna noticia registrada.")
-    
-    def crear_noticias(self, datos):
-
+             return msj(True, "Incoveniente al momento de guardar el tokens")
+        return token 
+     
+    def crear_noticia(self, datos):
         val = self.validar_token(datos['token'])
-        sql = f"INSERT INTO NOTICIAS (id_usuario, titulo, descripcion) VALUES ({val['data'][0]['id_persona']}, '{datos['titulo']}', '{datos['descripcion']}')"
-        res = self.insertar(sql)
-        return res
-        
-    def validar_token(self,token):
-        
-        sql = f"SELECT id_persona FROM PERSONAS WHERE tokens='{token}';"
-        res = self.consulta(sql)
-        
-        if not res['data']:
-            return msj(True, "El token no fue encontrado")
-        return res
-    
-    def act_noticias(self, datos):
-        
-        id_1 = self.validar_token(datos['token'])
-        sql = f"SELECT id_usuario FROM NOTICIAS WHERE id_noticia={datos['id_noticia']};"
-        id_2 = self.consulta(sql)
-        if id_1['data'][0]['id_persona'] == id_2['data'][0]['id_usuario']:
+        if not val['data'] :
+            return msj(True, mensaje="El token no fue encontrado")
+        if val['data'][0]['id_persona'] == int(datos['id_persona']):
             
-            sql = f"""UPDATE NOTICIAS SET titulo='{datos['titulo']}', descripcion='{datos['descripcion']}' 
-            WHERE id_noticia={datos['id_noticia']}"""
-            res = self.actualiza(sql)
-            return res
-        return msj(True,"No le es permitido actualizar esta noticia!")
-        
-    def eli_noticias(self,datos):
-        
-        id_1 = self.validar_token(datos['token'])
-        sql = f"SELECT id_usuario FROM NOTICIAS WHERE id_noticia={datos['id_noticia']};"
-        id_2 = self.consulta(sql)
-        if id_1['data'][0]['id_persona'] == id_2['data'][0]['id_usuario']:
-            sql = f"DELETE FROM NOTICIAS WHERE id_noticia={datos['id_noticia']};"
-            res = self.eliminar(sql)
-            return res
-        return "No le es permitido eliminar esta noticia"
-    
-    def crear_comentario(self,datos):
-        
-        id_1 = self.validar_token(datos['token'])
-        sql = f"SELECT id_usuario FROM NOTICIAS WHERE id_noticia={datos['id_noticia']};"
-        id_2 = self.consulta(sql)
-        if not id_2['data']:
-            return "No existe esta noticia."
-        if id_1['data'][0]['id_persona'] == id_2['data'][0]['id_usuario']:
-            sql = f"INSERT INTO comentario VALUES (2,'{datos['comentario']}', {datos['id_noticia']});"
+            sql = f"INSERT INTO NOTICIAS (id_persona, titulo, descripcion) VALUES ({val['data'][0]['id_persona']},'{datos['titulo']}','{datos['descripcion']}' )"
             res = self.insertar(sql)
             return res
-        return "No se pudo agregar el comentario "
+        return msj(True, mensaje="No es posible agregar a este noticia.")
+    
+    def bus_noticia(self, datos):
+        val = self.validar_token(datos['token'])
+        if not val['data'] :
+            return msj(True, mensaje="El token no fue encontrado")
+ 
+        if val['data'][0]['id_persona'] == int(datos['id_persona']):
+            sql = f"SELECT * FROM NOTICIAS WHERE id_persona='{datos['id_persona']}'"
+            res = self.consulta(sql)
+            
+            if len(res['data'])>0 :
+                return res
+            return msj(True, "Este usuario no tiene noticias registrada.")
+        
+        return msj(True, mensaje="No es posible mostrarle las noticias de ese usuario")
+    
+    def actualizar_noticia(self,datos):
+        
+        val = self.validar_token(datos['token'])
+        if not val['data'] :
+            return msj(True, mensaje="El token no fue encontrado")
+        
+        res = self.validar_noticia(val['data'][0]['id_persona'],datos['id_noticia'])
+        if not res:
+            sql = f"UPDATE NOTICIAS SET titulo='{datos['titulo']}', descripcion='{datos['descripcion']}' WHERE id_noticia={datos['id_noticia']}"
+            resul = self.actualizar(sql)
+            return resul
+        return res
+        
+        
+    def validar_noticia(self,id_usuario, id_noticia):
+        sql = f"SELECT id_persona FROM NOTICIAS WHERE id_noticia={id_noticia}"
+        res = self.consulta(sql)
+        if not res['data']:
+            return msj(True, mensaje="La noticia en donde quiere realizar la operación no existe.")
+        if id_usuario == res['data'][0]['id_persona'] :
+            return False
+        return msj(True, mensaje="No es posible realizar esta operación.")
+        
+    
+            
+    def eli_noticia(self, datos):
+        val = self.validar_token(datos['token'])
+        if not val['data']:
+            return msj(True, mensaje="El token no fue encontrado")
+        res = self.validar_noticia(val['data'][0]['id_persona'], datos['id_noticia'])
+        if not res:            
+            sql = f"DELETE FROM NOTICIAS WHERE id_noticia={datos['id_noticia']}"
+            res = self.eliminar(sql)
+            return res
+        return res
+    
+    def validar_token(self,token):
+        sql = f"SELECT id_persona FROM PERSONAS WHERE token='{token}';"
+        res = self.consulta(sql)
+        return res
+    
+    def crear_comentarios(self, datos):
+        val = self.validar_token(datos['token'])
+        if not val['data']:
+            return msj(True, mensaje="El token no fue encontrado")
+        res = self.validar_noticia(val['data'][0]['id_persona'], datos['id_noticia'])
+        if not res:            
+            sql = f"INSERT INTO COMENTARIOS(id_noticia,descripcion) VALUES ({datos['id_noticia']},'{datos['descripcion']}')"
+            res = self.insertar(sql)
+            return res
+        return res

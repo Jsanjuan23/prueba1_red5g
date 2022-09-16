@@ -1,7 +1,7 @@
 def msj(error=False, mensaje='', data=None):
-    out = {
-        'error': error,
-        'mensaje': mensaje,
-        'data': data
+    salida = {
+        'error' : error,
+        'mensaje' : mensaje,
+        'data' : data
     }
-    return out
+    return salida
